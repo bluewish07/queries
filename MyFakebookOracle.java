@@ -306,11 +306,10 @@ public class MyFakebookOracle extends FakebookOracle {
 
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
 		        ResultSet.CONCUR_READ_ONLY);
-		
+		/*
 		// find all siblings
 		//since they also have to be friends, intersect the selected table with FRIENDS
-		ResultSet rst = stmt.executeQuery("
-			select U1.user_id, U1.First_Name, U1.Last_Name, U2.user_id, U2.First_Name, U2.Last_Name
+		ResultSet rst = stmt.executeQuery("select U1.user_id, U1.First_Name, U1.Last_Name, U2.user_id, U2.First_Name, U2.Last_Name
 			from " + userTableName + " U1, " + userTableName + " U2" +
 			" where U1.user_id < U2.user_id AND 
 					U1.last_name = U2.last_name AND
@@ -335,7 +334,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		// Close statement and result set
 		rst.close();
 		stmt.close();
-
+		*/
 
 	}
 	
