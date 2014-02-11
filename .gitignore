@@ -1,2 +1,5 @@
 TestFakebookOracle.java 
 FakebookOracle.java
+.DS_Store
+*,jar
+*.txt
