@@ -169,6 +169,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		rst.close();
 		stmt.close();
 		
+
 	}
 	
 	@Override
@@ -229,6 +230,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		// Close statement and result set
 		rst.close();
 		stmt.close();
+
 	}
 
 
@@ -291,6 +293,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		stmt.close();
 		ps1.close();
 		ps2.close();
+
 	}
 
 	
@@ -413,6 +416,40 @@ public class MyFakebookOracle extends FakebookOracle {
 		String user2LastName = "Friend2LastName";
 		SiblingInfo s = new SiblingInfo(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
 		this.siblings.add(s);
+
+
+		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+		        ResultSet.CONCUR_READ_ONLY);
+		/*
+		// find all siblings
+		//since they also have to be friends, intersect the selected table with FRIENDS
+		ResultSet rst = stmt.executeQuery("select U1.user_id, U1.First_Name, U1.Last_Name, U2.user_id, U2.First_Name, U2.Last_Name
+			from " + userTableName + " U1, " + userTableName + " U2" +
+			" where U1.user_id < U2.user_id AND 
+					U1.last_name = U2.last_name AND
+					U1.hometown_city = U2.hometown_city AND
+					U1.year_of_birth - U2.year_of_birth < 10 AND
+					U1.year_of_birth - U2.year_of_birth > -10
+			INTERSECT
+			select *
+			from " + friendsTableName
+			"ORDER BY U1.user_id ASC");
+
+		
+		// Get the month with most friends, and the month with least friends.
+		// (Notice that this only considers months for which the number of friends is > 0)
+		// Also, count how many total friends have listed month of birth (i.e., month_of_birth not null)
+		//
+		while(rst.next()) {
+			SiblingInfo s = new SiblingInfo(U1.user_id, U1.First_Name, U1.Last_Name, U2.user_id, U2.First_Name, Last_Name);
+			this.siblings.add(s);
+		}
+		
+		// Close statement and result set
+		rst.close();
+		stmt.close();
+		*/
+
 	}
 	
 }
