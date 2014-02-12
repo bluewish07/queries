@@ -342,28 +342,6 @@ public class MyFakebookOracle extends FakebookOracle {
 											"order by count(*) desc, q_users.fuser, q_users.muser" + 
 										") results " +
 										"where users1.user_id = results.u1 and users2.user_id = results.u2");
-		/*
-		ResultSet rst = stmt.executeQuery("select users1.user_id, users1.first_name, users1.last_name, " + 
-										"users1.year_of_birth, users2.user_id, users2.first_name, " +
-										"users2.last_name, users2.year_of_birth from " + 
-										userTableName + " users1, " + userTableName + " users2, " + 
-										friendsTableName + " friends, " + tagTableName + " tags, " + 
-										"(select distinct tags.tag_photo_id, count(*) as p_count " + 
-													"from tags, " + tagTableName + " tags2, " +
-													userTableName + " users1, " + userTableName + " users2 "
-													"where tags.tag_photo_id = tags2.tag_photo_id and " +
-													"tags.tag_subject_id = users1.user_id and " + 
-													"tags2.tag_subject_id = users2.user_id) photos " + 
-										"where users1.gender = 'female' and users2.gender = 'male' and " +
-										"users1.year_of_birth - users2.year_of_birth <= " + yearDiff + " and " +
-										"users1.year_of_birth - users2.year_of_birth >= -" + yearDiff + " and " +
-										"not exists (select user1_id, user2_id from " + friendsTableName + 
-													" where user1_id = users1.user_id and user2_id = users2.user_id) " +
-										"and not exists (select user1_id, user2_id from " + friendsTableName + 
-														" where user1_id = users2.user_id and user2_id = users1.user_id) " + 
-										"and exists (select * from photos) " + 
-										"order by photos.p_count desc, users1.user_id, users2.user_id");
-		*/
 		
 		String individualQuery = "select shared_photos.tag_photo_id, photo.album_id, album.album_name, " + 
 									"photo.photo_caption, photo.photo_link from " + 
