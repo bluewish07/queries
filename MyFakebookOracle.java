@@ -314,24 +314,89 @@ public class MyFakebookOracle extends FakebookOracle {
 	// (iii) If there are still ties, choose the pair with the smaller user_id for the male
 	//
 	public void matchMaker(int n, int yearDiff) throws SQLException { 
-		Long girlUserId = 123L;
-		String girlFirstName = "girlFirstName";
-		String girlLastName = "girlLastName";
-		int girlYear = 1988;
-		Long boyUserId = 456L;
-		String boyFirstName = "boyFirstName";
-		String boyLastName = "boyLastName";
-		int boyYear = 1986;
-		MatchPair mp = new MatchPair(girlUserId, girlFirstName, girlLastName, 
-				girlYear, boyUserId, boyFirstName, boyLastName, boyYear);
-		String sharedPhotoId = "12345678";
-		String sharedPhotoAlbumId = "123456789";
-		String sharedPhotoAlbumName = "albumName";
-		String sharedPhotoCaption = "caption";
-		String sharedPhotoLink = "link";
-		mp.addSharedPhoto(new PhotoInfo(sharedPhotoId, sharedPhotoAlbumId, 
-				sharedPhotoAlbumName, sharedPhotoCaption, sharedPhotoLink));
-		this.bestMatches.add(mp);
+		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+		        ResultSet.CONCUR_READ_ONLY);
+		ResultSet rst = stmt.executeQuery("select users1.user_id, users1.first_name, users1.last_name, " +
+										"users1.year_of_birth, users2.user_id, users2.first_name, " +
+										"users2.last_name, users2.year_of_birth from " + 
+										userTableName + " users1, " + userTableName + " users2, " + 
+										"(select q_users.fuser u1, q_users.muser u2 from " +
+											tagTableName + " tags, " + tagTableName + " tags2, " + 
+											"(select users1.user_id fuser, users2.user_id muser from " + 
+												userTableName + " users1, " + userTableName + " users2, " + 
+												friendsTableName + " friends " + 
+												"where users1.gender = 'female' and users2.gender = 'male' and " +
+												"users1.year_of_birth - users2.year_of_birth <= " + yearDiff + 
+												" and " +
+												"users1.year_of_birth - users2.year_of_birth >= -" + yearDiff + 
+												" and " +
+												"not exists (select user1_id, user2_id from " + friendsTableName + 
+													" where user1_id = users1.user_id and user2_id = users2.user_id) " +
+												"and not exists (select user1_id, user2_id from " + friendsTableName + 
+													" where user1_id = users2.user_id and user2_id = users1.user_id)" + 
+											") q_users " +
+											"where tags.tag_photo_id = tags2.tag_photo_id and " +
+											"tags.tag_subject_id = q_users.fuser and " + 
+											"tags2.tag_subject_id = q_users.muser " + 
+											"group by q_users.fuser, q_users.muser " + 
+											"order by count(*) desc, q_users.fuser, q_users.muser" + 
+										") results " +
+										"where users1.user_id = results.u1 and users2.user_id = results.u2");
+		/*
+		ResultSet rst = stmt.executeQuery("select users1.user_id, users1.first_name, users1.last_name, " + 
+										"users1.year_of_birth, users2.user_id, users2.first_name, " +
+										"users2.last_name, users2.year_of_birth from " + 
+										userTableName + " users1, " + userTableName + " users2, " + 
+										friendsTableName + " friends, " + tagTableName + " tags, " + 
+										"(select distinct tags.tag_photo_id, count(*) as p_count " + 
+													"from tags, " + tagTableName + " tags2, " +
+													userTableName + " users1, " + userTableName + " users2 "
+													"where tags.tag_photo_id = tags2.tag_photo_id and " +
+													"tags.tag_subject_id = users1.user_id and " + 
+													"tags2.tag_subject_id = users2.user_id) photos " + 
+										"where users1.gender = 'female' and users2.gender = 'male' and " +
+										"users1.year_of_birth - users2.year_of_birth <= " + yearDiff + " and " +
+										"users1.year_of_birth - users2.year_of_birth >= -" + yearDiff + " and " +
+										"not exists (select user1_id, user2_id from " + friendsTableName + 
+													" where user1_id = users1.user_id and user2_id = users2.user_id) " +
+										"and not exists (select user1_id, user2_id from " + friendsTableName + 
+														" where user1_id = users2.user_id and user2_id = users1.user_id) " + 
+										"and exists (select * from photos) " + 
+										"order by photos.p_count desc, users1.user_id, users2.user_id");
+		*/
+		
+		String individualQuery = "select shared_photos.tag_photo_id, photo.album_id, album.album_name, " + 
+									"photo.photo_caption, photo.photo_link from " + 
+								"(select distinct tag_photo_id from " + tagTableName + 
+								" where tag_subject_id = ? intersect " + 
+								"select distinct tag_photo_id from " + tagTableName + 
+								" where tag_subject_id = ?) shared_photos, " + 
+								photoTableName + " photo, " + albumTableName + " album " + 
+								"where shared_photos.tag_photo_id = photo.photo_id and " + 
+									"photo.album_id = album.album_id";
+		java.sql.PreparedStatement ps = oracleConnection.prepareStatement(individualQuery);
+
+		int count = 0;
+		while (rst.next() && count < n) {
+			MatchPair mp = new MatchPair(rst.getLong(1), rst.getString(2), rst.getString(3), rst.getInt(4),
+										rst.getLong(5), rst.getString(6), rst.getString(7), rst.getInt(8));
+			ps.setLong(1, rst.getLong(1));
+			ps.setLong(2, rst.getLong(5));
+			ResultSet individualrst = ps.executeQuery();
+			while (individualrst.next()) {
+				mp.addSharedPhoto(new PhotoInfo(individualrst.getString(1), individualrst.getString(2),
+												individualrst.getString(3), individualrst.getString(4),
+												individualrst.getString(5)));
+			}
+			this.bestMatches.add(mp);
+
+			individualrst.close();
+		}
+
+		rst.close();
+		stmt.close();
+		ps.close();
+
 	}
 
 	
