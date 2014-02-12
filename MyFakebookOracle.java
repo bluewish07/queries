@@ -377,6 +377,106 @@ public class MyFakebookOracle extends FakebookOracle {
 	public void findAgeInfo(Long user_id) throws SQLException {
 		this.oldestFriend = new UserInfo(1L, "Oliver", "Oldham");
 		this.youngestFriend = new UserInfo(25L, "Yolanda", "Young");
+
+		//do two seperate query, one in ascending order and one in descending order
+		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+        ResultSet.CONCUR_READ_ONLY);
+		
+		//for the older, do asceding order on DOB
+		//selectedFriends select the users that are user_id's friends
+		ResultSet rst = stmt.executeQuery("select U.user_id, U.first_name, U.last_name, U.year_of_birth, U.month_of_birth, U.day_of_birth "+
+		"from " + userTableName + " U, " +
+		"inner join (select user1_id, user2_id " +
+					"from " + friendsTableName +
+					" where user1_id = " + user_id + " or user2_id = " +  user_id+ ") as selectedFriends " +
+		"on U.user_id = selectedFriends.user1_id OR U.user_id = selectedFriends.user2_id " +
+		"order by U.year_of_birth ASC, " +
+				  "U.month_of_birth ASC, " +
+				  "U.day_of_birth ASC"
+		);
+
+		Long olderUid = rst.getLong(1);
+		boolean firstTime = true;
+		int year = rst.getInt(4), month = rst.getInt(5), day = rst.getInt(6);
+		while(rst.next())
+		{
+			if(user_id != rst.getLong(1))
+			{
+				if(firstTime)
+				{
+					olderUid = rst.getLong(1);
+					year = rst.getInt(4);
+					month = rst.getInt(5);
+					day = rst.getInt(6);
+					this.oldestFriend = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3) );
+					firstTime = false;
+				}
+				else if(rst.getInt(4) > year || rst.getInt(5) > month || rst.getInt(6) > day)
+				{
+					//break because it will only get younger from this point
+					break;
+				}
+				//have the same birthday as previous row in this case
+				//having larger Uid means older
+				else if(rst.getLong(1) > olderUid)
+				{
+					olderUid = rst.getLong(1);
+					year = rst.getInt(4);
+					month = rst.getInt(5);
+					day = rst.getInt(6);
+					this.oldestFriend = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3) );
+				}
+			}
+		}
+		
+		//doing query for youngest
+		rst = stmt.executeQuery("select U.user_id, U.first_name, U.last_name, U.year_of_birth, U.month_of_birth, U.day_of_birth "+
+		"from " + userTableName + " U, " +
+		"inner join (select user1_id, user2_id " +
+					"from " + friendsTableName +
+					" where user1_id = " + user_id + " or user2_id = " +  user_id+ ") as selectedFriends " +
+		"on U.user_id = selectedFriends.user1_id OR U.user_id = selectedFriends.user2_id " +
+		"order by U.year_of_birth DESC, " +
+				  "U.month_of_birth DESC, " +
+				  "U.day_of_birth DESC"
+		);
+
+		Long youngerUid = rst.getLong(1);
+		firstTime = true;
+		while(rst.next())
+		{
+			if(user_id != rst.getLong(1))
+			{
+				if(firstTime)
+				{
+					youngerUid = rst.getLong(1);
+					year = rst.getInt(4);
+					month = rst.getInt(5);
+					day = rst.getInt(6);
+					this.youngestFriend = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3) );
+					firstTime = false;
+				}
+				else if(rst.getInt(4) < year || rst.getInt(5) < month || rst.getInt(6) < day)
+				{
+					//break because it will only get older from this point
+					break;
+				}
+				//have the same birthday as previous row in this case
+				//having larger Uid means older
+				else if(rst.getLong(1) < olderUid)
+				{
+					olderUid = rst.getLong(1);
+					year = rst.getInt(4);
+					month = rst.getInt(5);
+					day = rst.getInt(6);
+					this.youngestFriend = new UserInfo(rst.getLong(1), rst.getString(2), rst.getString(3) );
+				}
+			}
+		}
+		// Close statement and result set
+		rst.close();
+		stmt.close();
+
 	}
 	
 	
@@ -390,6 +490,37 @@ public class MyFakebookOracle extends FakebookOracle {
 		this.eventCount = 12;
 		this.popularCityNames.add("Ann Arbor");
 		this.popularCityNames.add("Ypsilanti");
+
+		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
+		        ResultSet.CONCUR_READ_ONLY);
+		
+		//get the city name with the max number of events, in descending order
+		ResultSet rst = stmt.executeQuery("select C.city_name, count(*) as eventCount "+
+		"from " + cityTableName + " C " +
+		"inner join "+ eventTableName + " E " +
+		"on C.city_id = E.city_id "+
+		"order by eventCount DESC");
+
+		//the city with max events are those on the top rows of result set
+		boolean firstCount = true;
+		String eventCity = "";
+		while(rst.next())
+		{
+			if(firstCount)
+			{
+				this.eventCount = rst.getInt(2);
+				firstCount = false;
+			}
+			if(!firstCount && rst.getInt(2)<this.eventCount)
+			{
+				break;
+			}
+			this.popularCityNames.add(rst.getString(1));
+		}
+		
+		// Close statement and result set
+		rst.close();
+		stmt.close();
 	}
 	
 	
@@ -420,36 +551,39 @@ public class MyFakebookOracle extends FakebookOracle {
 
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
 		        ResultSet.CONCUR_READ_ONLY);
-		/*
-		// find all siblings
-		//since they also have to be friends, intersect the selected table with FRIENDS
-		ResultSet rst = stmt.executeQuery("select U1.user_id, U1.First_Name, U1.Last_Name, U2.user_id, U2.First_Name, U2.Last_Name
-			from " + userTableName + " U1, " + userTableName + " U2" +
-			" where U1.user_id < U2.user_id AND 
-					U1.last_name = U2.last_name AND
-					U1.hometown_city = U2.hometown_city AND
-					U1.year_of_birth - U2.year_of_birth < 10 AND
-					U1.year_of_birth - U2.year_of_birth > -10
-			INTERSECT
-			select *
-			from " + friendsTableName
-			"ORDER BY U1.user_id ASC");
-
 		
-		// Get the month with most friends, and the month with least friends.
-		// (Notice that this only considers months for which the number of friends is > 0)
-		// Also, count how many total friends have listed month of birth (i.e., month_of_birth not null)
-		//
-		while(rst.next()) {
-			SiblingInfo s = new SiblingInfo(U1.user_id, U1.First_Name, U1.Last_Name, U2.user_id, U2.First_Name, Last_Name);
+		//get all user_id pairs that are friends, with the same last name
+		//since they also have to be friends, intersect the selected table with FRIENDS
+		ResultSet rst = stmt.executeQuery("select U1.user_id, U2.user_id "+
+		"from " + userTableName + " U1, " + userTableName + " U2 " + 
+		"inner join "+hometownCityTableName + " H " +
+		"on U1.user_id = H.user_id AND U2.user_id = H.user_id "+
+			"where U1.user_id < U2.user_id AND "+
+					"U1.last_name = U2.last_name AND "+
+					"U1.hometown_city = U2.hometown_city AND "+
+					"U1.year_of_birth - U2.year_of_birth < 10 AND "+
+					"U1.year_of_birth - U2.year_of_birth > -10 "+
+			"INTERSECT "+
+			"select * "+
+			"from " + friendsTableName +
+			" ORDER BY U1.user_id ASC");
+
+		//get the user_ids from the result set
+		while(rst.next()) 
+		{
+			user1_id = rst.getLong(1);
+			user1FirstName = rst.getString(2);
+			user1LastName = rst.getString(3);
+			user2_id = rst.getLong(4);
+			user2FirstName = rst.getString(5);
+			user2LastName = rst.getString(6);
+			SiblingInfo entry = new SiblingInfo(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
 			this.siblings.add(s);
 		}
 		
 		// Close statement and result set
 		rst.close();
 		stmt.close();
-		*/
-
 	}
 	
 }
