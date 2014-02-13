@@ -416,18 +416,18 @@ public class MyFakebookOracle extends FakebookOracle {
 		ResultSet rst = stmt.executeQuery(
 									"select  * from " + 
 									"(select FA.user2_id left, FB.user2_id right" +
-									"from friendsTableName FA, friendsTableName FB " +
+									"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
 									"where FA.user1_id = FB.user1_id AND " +
 										   "FA.user2_id != FB.user2_id AND " +
 										   "FA.user2_id < FB.user2_id " +
 									"UNION ALL " +
 									"select FA.user1_id left, FB.user2_id right " +
-									"from friendsTableName FA, friendsTableName FB " +
+									"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
 									"where FA.user2_id = FB.user1_id AND " +
 										   "FA.user1_id < FB.user2_id " +
 									"MINUS " +
 									"select FA.user1_id left, FA.user2_id right " +
-									"from friendsTableName FA ) FC " +
+									"from " + friendsTableName + "FA ) FC " +
 									"group by FC.left, FC.right " +
 									"order by count(*) DESC");
 
