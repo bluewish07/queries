@@ -444,7 +444,7 @@ public class MyFakebookOracle extends FakebookOracle {
 				//this query is just to get the paired user's names
 				pairQuery = "select U1.first_name, U1.last_name, U2.first_name, U2.last_name " +
 							"from " + userTableName + " U1, " + userTableName + " U2 " +
-							"where U1.user_id = ? AND U2.user_id =?";
+							"where U1.user_id = ? AND U2.user_id = ?";
 				pairStmt = oracleConnection.prepareStatement(pairQuery);
 				pairStmt.setLong(1, leftID);
 				pairStmt.setLong(2, rightID);
