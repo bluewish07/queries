@@ -414,7 +414,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
         ResultSet.CONCUR_READ_ONLY);
 		ResultSet rst = stmt.executeQuery(
-									"select  * from " + 
+									"select * from " + 
 									"(select FA.user2_id left, FB.user2_id right" +
 									"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
 									"where FA.user1_id = FB.user1_id AND " +
