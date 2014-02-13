@@ -415,7 +415,7 @@ public class MyFakebookOracle extends FakebookOracle {
         ResultSet.CONCUR_READ_ONLY);
 		ResultSet rst = stmt.executeQuery(
 									"select * from " + 
-									"(select FA.user2_id left, FB.user2_id right" +
+									"(select FA.user2_id left, FB.user2_id right " +
 									"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
 									"where FA.user1_id = FB.user1_id AND " +
 										   "FA.user2_id != FB.user2_id AND " +
@@ -427,18 +427,25 @@ public class MyFakebookOracle extends FakebookOracle {
 										   "FA.user1_id < FB.user2_id " +
 									"MINUS " +
 									"select FA.user1_id left, FA.user2_id right " +
-									"from " + friendsTableName + "FA ) FC " +
+									"from " + friendsTableName + " FA ) FC " +
 									"group by FC.left, FC.right " +
 									"order by count(*) DESC");
 
 		//now get all the friends pair that have mutual friends but are not friends
-		Long leftID = rst.getLong(1), rightID = rst.getLong(2);
+		Long leftID = 0L, rightID = 0L;
 		int count = n;
+		boolean firstTime = true;
 		String mutualFriendQuery = "", pairQuery = "";
 		java.sql.PreparedStatement ps, pairStmt;
 		ResultSet mutualSet, pairSet;
 		while(rst.next() && count > 0)
 		{
+			if(firstTime)
+			{
+				leftID = rst.getLong(1);
+				rightID = rst.getLong(2);
+				firstTime = false;
+			}
 			if( (leftID != rst.getLong(1)) && (rightID != rst.getLong(2)))
 			{
 				//this query is just to get the paired user's names
@@ -484,7 +491,7 @@ public class MyFakebookOracle extends FakebookOracle {
 				}
 				leftID = rst.getLong(1);
 				rightID = rst.getLong(2);
-				n--;	
+				count--;	
 			}
 		}
 	}
@@ -519,9 +526,9 @@ public class MyFakebookOracle extends FakebookOracle {
 				  "U.day_of_birth ASC"
 		);
 
-		Long olderUid = rst.getLong(1);
+		Long olderUid = 0L;
 		boolean firstTime = true;
-		int year = rst.getInt(4), month = rst.getInt(5), day = rst.getInt(6);
+		int year = 0, month = 0, day = 0;
 		while(rst.next())
 		{
 			if(user_id != rst.getLong(1))
@@ -565,7 +572,7 @@ public class MyFakebookOracle extends FakebookOracle {
 				  "U.day_of_birth DESC"
 		);
 
-		Long youngerUid = rst.getLong(1);
+		Long youngerUid = 0L;
 		firstTime = true;
 		while(rst.next())
 		{
@@ -587,7 +594,7 @@ public class MyFakebookOracle extends FakebookOracle {
 				}
 				//have the same birthday as previous row in this case
 				//having larger Uid means older
-				else if(rst.getLong(1) < olderUid)
+				else if(rst.getLong(1) < youngerUid)
 				{
 					olderUid = rst.getLong(1);
 					year = rst.getInt(4);
