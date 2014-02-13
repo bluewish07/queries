@@ -462,7 +462,7 @@ public class MyFakebookOracle extends FakebookOracle {
 				//find all mutual friends of this pair
 				//find all of their friends and do intersection
 				mutualFriendQuery = "select friendsList.fid, U.first_name, U.last_name " +
-									"from userTableName U," + "(select user1_id fid " +
+									"from " + userTableName + " U," + "(select user1_id fid " +
 																"from " + friendsTableName +
 																" where user2_id = ? " +
 																"UNION " +
@@ -519,11 +519,9 @@ public class MyFakebookOracle extends FakebookOracle {
 		//for the older, do asceding order on DOB
 		//selectedFriends select the users that are user_id's friends
 		ResultSet rst = stmt.executeQuery("select U.user_id, U.first_name, U.last_name, U.year_of_birth, U.month_of_birth, U.day_of_birth "+
-		"from " + userTableName + " U, " +
-		"join (select user1_id, user2_id " +
-					"from " + friendsTableName +
-					" where user1_id = " + user_id + " or user2_id = " +  user_id+ ") as selectedFriends " +
-		"on U.user_id = selectedFriends.user1_id OR U.user_id = selectedFriends.user2_id " +
+		"from " + userTableName + " U, (select user1_id, user2_id from " + friendsTableName +
+					" where user1_id = " + user_id + " or user2_id = " +  user_id+ ") selectedFriends " +
+		"where " + user_id + " != U.user_id AND (U.user_id = selectedFriends.user1_id OR U.user_id = selectedFriends.user2_id) " +
 		"order by U.year_of_birth ASC, " +
 				  "U.month_of_birth ASC, " +
 				  "U.day_of_birth ASC"
@@ -565,11 +563,9 @@ public class MyFakebookOracle extends FakebookOracle {
 		
 		//doing query for youngest
 		rst = stmt.executeQuery("select U.user_id, U.first_name, U.last_name, U.year_of_birth, U.month_of_birth, U.day_of_birth "+
-		"from " + userTableName + " U, " +
-		"join (select user1_id, user2_id " +
-					"from " + friendsTableName +
-					" where user1_id = " + user_id + " or user2_id = " +  user_id+ ") as selectedFriends " +
-		"on U.user_id = selectedFriends.user1_id OR U.user_id = selectedFriends.user2_id " +
+		"from " + userTableName + " U, (select user1_id, user2_id from " + friendsTableName +
+					" where user1_id = " + user_id + " or user2_id = " +  user_id+ ") selectedFriends " +
+		"where " + user_id + " != U.user_id AND (U.user_id = selectedFriends.user1_id OR U.user_id = selectedFriends.user2_id) " +
 		"order by U.year_of_birth DESC, " +
 				  "U.month_of_birth DESC, " +
 				  "U.day_of_birth DESC"
@@ -629,10 +625,10 @@ public class MyFakebookOracle extends FakebookOracle {
 		        ResultSet.CONCUR_READ_ONLY);
 		
 		//get the city name with the max number of events, in descending order
-		ResultSet rst = stmt.executeQuery("select C.city_name, count(*) as eventCount "+
+		ResultSet rst = stmt.executeQuery("select C.city_name, count(*) eventCount "+
 		"from " + cityTableName + " C " +
 		"join "+ eventTableName + " E " +
-		"on C.city_id = E.city_id "+
+		"on C.city_id = E.event_city_id "+
 		"order by eventCount DESC");
 
 		//the city with max events are those on the top rows of result set
