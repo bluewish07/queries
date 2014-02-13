@@ -620,44 +620,50 @@ public class MyFakebookOracle extends FakebookOracle {
 		        ResultSet.CONCUR_READ_ONLY);
 		
 		//get the city name with the max number of events, in descending order
-		ResultSet rst = stmt.executeQuery("select C.city_name "+
+		ResultSet rst = stmt.executeQuery("select C.city_name, E.event_city_id "+
 		"from " + cityTableName + " C, " + eventTableName + " E " +
-		"where C.city_id = E.event_city_id "+
-		"group by C.city_name " +
+		"where C.city_id = E.event_city_id " +
+		"group by C.city_name, E.event_city_id " +
 		"order by count(*) DESC");
+
+		String query = "select count(*) from " + 
+						 eventTableName + " E " +
+						"where E.event_city_id = ?";
+		java.sql.PreparedStatement ps = oracleConnection.prepareStatement(query);
 
 		//the city with max events are those on the top rows of result set
 		String eventCity = "";
-		int cityCount = 0;
-		int max = 0;
-		boolean firstCount = true;
 		while(rst.next())
 		{
-			if(firstCount)
+			if(rst.isFirst())
 			{
 				eventCity = rst.getString(1);
-				firstCount = false;
+				ps.setInt(1, rst.getInt(2));
+				ResultSet maxrst = ps.executeQuery();
+				maxrst.next();
+				this.eventCount = maxrst.getInt(1);
+				this.popularCityNames.add(eventCity);
+				maxrst.close();
+
+
 			}
 			if(rst.getString(1) != eventCity)
 			{
-				if(cityCount < max)
-				{
+				ps.setInt(1, rst.getInt(2));
+				ResultSet maxrst = ps.executeQuery();
+				maxrst.next();
+				if (maxrst.getInt(1) == this.eventCount) {// tie
+					this.popularCityNames.add(rst.getString(1));
+				}
+				else 
 					break;
-				}
-				else
-				{
-					max = cityCount;
-					eventCity = rst.getString(1);
-					this.eventCount = 12;
-					this.popularCityNames.add(eventCity);
-					cityCount = 0;
-				}
+
 			}
-			cityCount++;
 		}
 		
 		// Close statement and result set
 		rst.close();
+		ps.close();
 		stmt.close();
 	}
 	
