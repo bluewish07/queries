@@ -456,26 +456,28 @@ public class MyFakebookOracle extends FakebookOracle {
 				pairStmt.setLong(1, leftID);
 				pairStmt.setLong(2, rightID);
 				pairSet = pairStmt.executeQuery();
-				p = new FriendsPair(leftID, pairSet.getString(1), pairSet.getString(2), rightID, pairSet.getString(3), pairSet.getString(4));
-
+				while(pairSet.next())
+				{
+					p = new FriendsPair(leftID, pairSet.getString(1), pairSet.getString(2), rightID, pairSet.getString(3), pairSet.getString(4));
+				}
 				//find all mutual friends of this pair
 				//find all of their friends and do intersection
 				mutualFriendQuery = "select friendsList.fid, U.first_name, U.last_name " +
 									"from userTableName U," + "(select user1_id fid " +
 																"from " + friendsTableName +
-																" where user2_id = ?" +
+																" where user2_id = ? " +
 																"UNION" +
 																"select user2_id fid " +
 																"from " + friendsTableName +
-																" where user1_id = ?" +
+																" where user1_id = ? " +
 																"INTERSECT " +
 																"(select user1_id fid " +
 																"from " + friendsTableName +
-																" where user2_id = ?"+
+																" where user2_id = ? "+
 																"UNION" +
 																"select user2_id fid " +
 																"from " + friendsTableName +
-																" where user1_id = ?)) friendsList" +
+																" where user1_id = ?)) friendsList " +
 									"where friendsList.fid = U.user_id";
 
 				ps = oracleConnection.prepareStatement(mutualFriendQuery);
