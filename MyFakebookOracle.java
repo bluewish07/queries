@@ -405,7 +405,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		p.addSharedFriend(567L, "sharedFriend1FirstName", "sharedFriend1LastName");
 		p.addSharedFriend(678L, "sharedFriend2FirstName", "sharedFriend2LastName");
 		p.addSharedFriend(789L, "sharedFriend3FirstName", "sharedFriend3LastName");
-		this.suggestedFriendsPairs.add(p);
+		//this.suggestedFriendsPairs.add(p);
 
 		/*==============================
 		first get all pairs that has mutual friends
@@ -509,8 +509,6 @@ public class MyFakebookOracle extends FakebookOracle {
 	// on the same day, then assume that the one with the larger user_id is older
 	//
 	public void findAgeInfo(Long user_id) throws SQLException {
-		this.oldestFriend = new UserInfo(1L, "Oliver", "Oldham");
-		this.youngestFriend = new UserInfo(25L, "Yolanda", "Young");
 
 		//do two seperate query, one in ascending order and one in descending order
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
@@ -617,35 +615,45 @@ public class MyFakebookOracle extends FakebookOracle {
 	// events in that city.  If there is a tie, return the names of all of the (tied) cities.
 	//
 	public void findEventCities() throws SQLException {
-		this.eventCount = 12;
-		this.popularCityNames.add("Ann Arbor");
-		this.popularCityNames.add("Ypsilanti");
 
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
 		        ResultSet.CONCUR_READ_ONLY);
 		
 		//get the city name with the max number of events, in descending order
-		ResultSet rst = stmt.executeQuery("select C.city_name, count(*) eventCount "+
-		"from " + cityTableName + " C " +
-		"join "+ eventTableName + " E " +
-		"on C.city_id = E.event_city_id "+
-		"order by eventCount DESC");
+		ResultSet rst = stmt.executeQuery("select C.city_name "+
+		"from " + cityTableName + " C, " + eventTableName + " E " +
+		"where C.city_id = E.event_city_id "+
+		"group by C.city_name " +
+		"order by count(*) DESC");
 
 		//the city with max events are those on the top rows of result set
-		boolean firstCount = true;
 		String eventCity = "";
+		int cityCount = 0;
+		int max = 0;
+		boolean firstCount = true;
 		while(rst.next())
 		{
 			if(firstCount)
 			{
-				this.eventCount = rst.getInt(2);
+				eventCity = rst.getString(1);
 				firstCount = false;
 			}
-			if(!firstCount && rst.getInt(2)<this.eventCount)
+			if(rst.getString(1) != eventCity)
 			{
-				break;
+				if(cityCount < max)
+				{
+					break;
+				}
+				else
+				{
+					max = cityCount;
+					eventCity = rst.getString(1);
+					this.eventCount = 12;
+					this.popularCityNames.add(eventCity);
+					cityCount = 0;
+				}
 			}
-			this.popularCityNames.add(rst.getString(1));
+			cityCount++;
 		}
 		
 		// Close statement and result set
