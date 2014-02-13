@@ -436,8 +436,6 @@ public class MyFakebookOracle extends FakebookOracle {
 		int count = n;
 		boolean firstTime = true;
 		String mutualFriendQuery = "", pairQuery = "";
-		java.sql.PreparedStatement ps, pairStmt;
-		ResultSet mutualSet, pairSet;
 		while(rst.next() && count > 0)
 		{
 			if(firstTime)
@@ -452,21 +450,22 @@ public class MyFakebookOracle extends FakebookOracle {
 				pairQuery = "select U1.first_name, U1.last_name, U2.first_name, U2.last_name " +
 							"from " + userTableName + " U1, " + userTableName + " U2 " +
 							"where U1.user_id = ? AND U2.user_id = ?";
-				pairStmt = oracleConnection.prepareStatement(pairQuery);
+				java.sql.PreparedStatement pairStmt = oracleConnection.prepareStatement(pairQuery);
 				pairStmt.setLong(1, leftID);
 				pairStmt.setLong(2, rightID);
-				pairSet = pairStmt.executeQuery();
+				ResultSet pairSet = pairStmt.executeQuery();
 				while(pairSet.next())
 				{
 					p = new FriendsPair(leftID, pairSet.getString(1), pairSet.getString(2), rightID, pairSet.getString(3), pairSet.getString(4));
 				}
+				pairSet.close();
 				//find all mutual friends of this pair
 				//find all of their friends and do intersection
 				mutualFriendQuery = "select friendsList.fid, U.first_name, U.last_name " +
 									"from userTableName U," + "(select user1_id fid " +
 																"from " + friendsTableName +
 																" where user2_id = ? " +
-																"UNION" +
+																"UNION " +
 																"select user2_id fid " +
 																"from " + friendsTableName +
 																" where user1_id = ? " +
@@ -474,18 +473,18 @@ public class MyFakebookOracle extends FakebookOracle {
 																"(select user1_id fid " +
 																"from " + friendsTableName +
 																" where user2_id = ? "+
-																"UNION" +
+																"UNION " +
 																"select user2_id fid " +
 																"from " + friendsTableName +
 																" where user1_id = ?)) friendsList " +
 									"where friendsList.fid = U.user_id";
 
-				ps = oracleConnection.prepareStatement(mutualFriendQuery);
+				java.sql.PreparedStatement ps = oracleConnection.prepareStatement(mutualFriendQuery);
 				ps.setLong(1, leftID);
 				ps.setLong(2, leftID);
 				ps.setLong(3, rightID);
 				ps.setLong(4, rightID);
-				mutualSet = ps.executeQuery();
+				ResultSet mutualSet = ps.executeQuery();
 				while(mutualSet.next())
 				{
 					p.addSharedFriend(mutualSet.getLong(1), mutualSet.getString(2), mutualSet.getString(3));
@@ -493,7 +492,9 @@ public class MyFakebookOracle extends FakebookOracle {
 				}
 				leftID = rst.getLong(1);
 				rightID = rst.getLong(2);
-				count--;	
+				count--;
+				mutualSet.close();
+				ps.close();
 			}
 		}
 	}
