@@ -684,7 +684,7 @@ public class MyFakebookOracle extends FakebookOracle {
 		String user2FirstName = "Friend2FirstName";
 		String user2LastName = "Friend2LastName";
 		SiblingInfo s = new SiblingInfo(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
-		this.siblings.add(s);
+		//this.siblings.add(s);
 
 
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
@@ -692,19 +692,23 @@ public class MyFakebookOracle extends FakebookOracle {
 		
 		//get all user_id pairs that are friends, with the same last name
 		//since they also have to be friends, intersect the selected table with FRIENDS
-		ResultSet rst = stmt.executeQuery("select U1.user_id, U2.user_id "+
-		"from " + userTableName + " U1, " + userTableName + " U2 " + 
-		"join "+hometownCityTableName + " H " +
-		"on U1.user_id = H.user_id AND U2.user_id = H.user_id "+
-			"where U1.user_id < U2.user_id AND "+
+		ResultSet rst = stmt.executeQuery("select sibling.bro, sib1.first_name, sib1.last_name, sibling.sis, sib2.first_name, sib2.last_name " +
+			"from " + userTableName + " sib1, " + userTableName + " sib2, " +
+			"(select U1.user_id bro, U2.user_id sis "+
+		"from " + userTableName + " U1, " + userTableName + " U2, " + hometownCityTableName + " H1, " + hometownCityTableName + " H2 " +
+			"where U1.user_id = H1.user_id AND " +
+					"U2.user_id = H2.user_id AND " +
+					"U1.user_id < U2.user_id AND "+
 					"U1.last_name = U2.last_name AND "+
-					"U1.hometown_city = U2.hometown_city AND "+
+					"H1.hometown_city_id = H2.hometown_city_id AND "+
 					"U1.year_of_birth - U2.year_of_birth < 10 AND "+
 					"U1.year_of_birth - U2.year_of_birth > -10 "+
 			"INTERSECT "+
-			"select * "+
-			"from " + friendsTableName +
-			" ORDER BY U1.user_id ASC");
+			"select FT.user1_id bro, FT.user2_id sis "+
+			"from " + friendsTableName + " FT ) sibling "+
+			"where sibling.bro = sib1.user_id AND sibling.sis = sib2.user_id " +
+			"ORDER BY sibling.bro ASC, " +
+						"sibling.sis ASC");
 
 		//get the user_ids from the result set
 		while(rst.next()) 
