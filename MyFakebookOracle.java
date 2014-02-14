@@ -402,11 +402,6 @@ public class MyFakebookOracle extends FakebookOracle {
 		String user2LastName = "Friend2LastName";
 		FriendsPair p = new FriendsPair(user1_id, user1FirstName, user1LastName, user2_id, user2FirstName, user2LastName);
 
-		p.addSharedFriend(567L, "sharedFriend1FirstName", "sharedFriend1LastName");
-		p.addSharedFriend(678L, "sharedFriend2FirstName", "sharedFriend2LastName");
-		p.addSharedFriend(789L, "sharedFriend3FirstName", "sharedFriend3LastName");
-		//this.suggestedFriendsPairs.add(p);
-
 		/*==============================
 		first get all pairs that has mutual friends
 		then remove those who are friends already
@@ -414,88 +409,85 @@ public class MyFakebookOracle extends FakebookOracle {
 		Statement stmt = oracleConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE,
         ResultSet.CONCUR_READ_ONLY);
 		ResultSet rst = stmt.executeQuery(
-									"select * from " + 
-									"(select FA.user2_id left, FB.user2_id right " +
-									"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
-									"where FA.user1_id = FB.user1_id AND " +
-										   "FA.user2_id != FB.user2_id AND " +
-										   "FA.user2_id < FB.user2_id " +
-									"UNION ALL " +
-									"select FA.user1_id left, FB.user2_id right " +
-									"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
-									"where FA.user2_id = FB.user1_id AND " +
-										   "FA.user1_id < FB.user2_id " +
-									"MINUS " +
-									"select FA.user1_id left, FA.user2_id right " +
-									"from " + friendsTableName + " FA ) FC " +
+									"select FC.left, FC.right from " + 
+										"(select FA.user2_id left, FB.user2_id right " +
+										"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
+										"where FA.user1_id = FB.user1_id AND " +
+											   "FA.user2_id != FB.user2_id AND " +
+											   "FA.user2_id < FB.user2_id " +
+										"UNION ALL " +
+										"select FA.user1_id left, FB.user2_id right " +
+										"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
+										"where FA.user2_id = FB.user1_id AND " +
+											   "FA.user1_id < FB.user2_id " +
+										"UNION ALL " +
+										"select FA.user1_id left, FB.user1_id right " +
+										"from " + friendsTableName + " FA, " + friendsTableName +" FB " +
+										"where FA.user2_id = FB.user2_id AND " +
+											   "FA.user1_id < FB.user1_id) FC " + 
+									"where not exists (select * from " +friendsTableName + " areFriends " + 
+											"where FC.left = areFriends.user1_id AND FC.right = areFriends.user2_id) " +
 									"group by FC.left, FC.right " +
-									"order by count(*) DESC");
+									"order by count(*) DESC"
+		);
 
 		//now get all the friends pair that have mutual friends but are not friends
 		Long leftID = 0L, rightID = 0L;
 		int count = n;
-		boolean firstTime = true;
 		String mutualFriendQuery = "", pairQuery = "";
 		while(rst.next() && count > 0)
 		{
-			if(firstTime)
+			leftID = rst.getLong(1);
+			rightID = rst.getLong(2);
+			//this query is just to get the paired user's names
+			pairQuery = "select U1.first_name, U1.last_name, U2.first_name, U2.last_name " +
+						"from " + userTableName + " U1, " + userTableName + " U2 " +
+						"where U1.user_id = ? AND U2.user_id = ?";
+			java.sql.PreparedStatement pairStmt = oracleConnection.prepareStatement(pairQuery);
+			pairStmt.setLong(1, leftID);
+			pairStmt.setLong(2, rightID);
+			ResultSet pairSet = pairStmt.executeQuery();
+			while(pairSet.next())
 			{
-				leftID = rst.getLong(1);
-				rightID = rst.getLong(2);
-				firstTime = false;
+				p = new FriendsPair(leftID, pairSet.getString(1), pairSet.getString(2), rightID, pairSet.getString(3), pairSet.getString(4));
 			}
-			if( (leftID != rst.getLong(1)) && (rightID != rst.getLong(2)))
-			{
-				//this query is just to get the paired user's names
-				pairQuery = "select U1.first_name, U1.last_name, U2.first_name, U2.last_name " +
-							"from " + userTableName + " U1, " + userTableName + " U2 " +
-							"where U1.user_id = ? AND U2.user_id = ?";
-				java.sql.PreparedStatement pairStmt = oracleConnection.prepareStatement(pairQuery);
-				pairStmt.setLong(1, leftID);
-				pairStmt.setLong(2, rightID);
-				ResultSet pairSet = pairStmt.executeQuery();
-				while(pairSet.next())
-				{
-					p = new FriendsPair(leftID, pairSet.getString(1), pairSet.getString(2), rightID, pairSet.getString(3), pairSet.getString(4));
-				}
-				pairSet.close();
-				//find all mutual friends of this pair
-				//find all of their friends and do intersection
-				mutualFriendQuery = "select friendsList.fid, U.first_name, U.last_name " +
-									"from " + userTableName + " U," + "(select user1_id fid " +
-																"from " + friendsTableName +
-																" where user2_id = ? " +
-																"UNION " +
-																"select user2_id fid " +
-																"from " + friendsTableName +
-																" where user1_id = ? " +
-																"INTERSECT " +
-																"(select user1_id fid " +
-																"from " + friendsTableName +
-																" where user2_id = ? "+
-																"UNION " +
-																"select user2_id fid " +
-																"from " + friendsTableName +
-																" where user1_id = ?)) friendsList " +
-									"where friendsList.fid = U.user_id";
+			pairSet.close();
+			//find all mutual friends of this pair
+			//find all of their friends and do intersection
+			mutualFriendQuery = "select friendsList.fid, U.first_name, U.last_name " +
+								"from " + userTableName + " U," + "(select user1_id fid " +
+															"from " + friendsTableName +
+															" where user2_id = ? " +
+															"UNION " +
+															"select user2_id fid " +
+															"from " + friendsTableName +
+															" where user1_id = ? " +
+															"INTERSECT " +
+															"(select user1_id fid " +
+															"from " + friendsTableName +
+															" where user2_id = ? "+
+															"UNION " +
+															"select user2_id fid " +
+															"from " + friendsTableName +
+															" where user1_id = ?)) friendsList " +
+								"where friendsList.fid = U.user_id";
 
-				java.sql.PreparedStatement ps = oracleConnection.prepareStatement(mutualFriendQuery);
-				ps.setLong(1, leftID);
-				ps.setLong(2, leftID);
-				ps.setLong(3, rightID);
-				ps.setLong(4, rightID);
-				ResultSet mutualSet = ps.executeQuery();
-				while(mutualSet.next())
-				{
-					p.addSharedFriend(mutualSet.getLong(1), mutualSet.getString(2), mutualSet.getString(3));
-					this.suggestedFriendsPairs.add(p);
-				}
-				leftID = rst.getLong(1);
-				rightID = rst.getLong(2);
-				count--;
-				mutualSet.close();
-				ps.close();
+			java.sql.PreparedStatement ps = oracleConnection.prepareStatement(mutualFriendQuery);
+			ps.setLong(1, leftID);
+			ps.setLong(2, leftID);
+			ps.setLong(3, rightID);
+			ps.setLong(4, rightID);
+			ResultSet mutualSet = ps.executeQuery();
+			while(mutualSet.next())
+			{
+				p.addSharedFriend(mutualSet.getLong(1), mutualSet.getString(2), mutualSet.getString(3));
 			}
+			this.suggestedFriendsPairs.add(p);
+			leftID = rst.getLong(1);
+			rightID = rst.getLong(2);
+			count--;
+			mutualSet.close();
+			ps.close();
 		}
 	}
 	
